@@ -60,13 +60,24 @@ public class PanelJuego extends JPanel implements ActionListener {
     
     public void disparar() {
         if (bloqueado) return;
-        if (contadorProyectiles < proyectiles.length) {
-            HiloProyectil p = new HiloProyectil(xNave + 40, yNave + 15);
-            proyectiles[contadorProyectiles++] = p;
-            p.start();
+        
+         int cooldown = 1000;
+         if (naveJugador != null && naveJugador.getDificultad() != null) {
+             cooldown = naveJugador.getDificultad().getSleepDisparoMs();
+         }
+         
+        long tiempoActual = System.currentTimeMillis();
+        
+        if (tiempoActual - ultimoDisparoMs >= cooldown) {
+           if (contadorProyectiles < proyectiles.length) {
+               HiloProyectil p = new HiloProyectil(xNave + 40, yNave + 15);
+               proyectiles[contadorProyectiles++] = p;
+               p.start();
+               ultimoDisparoMs = tiempoActual;
         }
     }
-    
+}
+
     private void generarObjetoAleatorio() {
         if (contadorObjetos >= objetosEspaciales.length) return;
         
@@ -98,10 +109,13 @@ public class PanelJuego extends JPanel implements ActionListener {
                 for (int j = 0; j < contadorObjetos; j++) {
                     HiloObjetoEspecial obj = objetosEspaciales[j];
                     if (obj != null && obj.isActivo()) {
-                        if (Math.abs(getX() - obj.getX()) < 30 && Math.abs(p.getY() - obj.getY()) < 30) {
+                        if (Math.abs(getX() - obj.getX()) < 40 && Math.abs(p.getY() - obj.getY()) < 35) {
                             p.detener();
-                            if (obj.getTipo() == TipoObjeto.ENEMIGO) puntaje += 20;
-                            else if (obj.getTipo() == TipoObjeto.SNITCH_ESPECIAL) {
+                            obj.detener();
+                            
+                            if (obj.getTipo() == TipoObjeto.ENEMIGO) {
+                                puntaje += 20;
+                            } else if (obj.getTipo() == TipoObjeto.SNITCH_ESPECIAL) {
                                 puntaje += 150;
                                 destruirEnemigos();
                             }
@@ -114,11 +128,13 @@ public class PanelJuego extends JPanel implements ActionListener {
         for (int j = 0; j < contadorObjetos; j++) {
             HiloObjetoEspecial obj = objetosEspaciales[j];
             if (obj != null && obj.isActivo()) {
-                if (Math.abs(xNave - obj.getX()) < 35 && Math.abs(yNave - obj.getY()) < 35) {
+                if (Math.abs(xNave - obj.getX()) < 40 && Math.abs(yNave - obj.getY()) < 35) {
                     obj.detener();
-                    if (obj.getTipo() == TipoObjeto.ASTEROIDE) bloquearNave();
-                    else if (obj.getTipo() == TipoObjeto.QUAFFLE) puntaje += 10;
-                    else if(obj.getTipo() == TipoObjeto.SNITCH_ESPECIAL) {
+                    if (obj.getTipo() == TipoObjeto.ASTEROIDE) {
+                        bloquearNave();
+                    } else if (obj.getTipo() == TipoObjeto.QUAFFLE) {
+                        puntaje += 10;
+                    } else if(obj.getTipo() == TipoObjeto.SNITCH_ESPECIAL) {
                         puntaje += 150;
                         destruirEnemigos();
                     }
@@ -142,6 +158,8 @@ public class PanelJuego extends JPanel implements ActionListener {
             }
         }
     }
+    
+    private long ultimoDisparoMs = 0;
     
     @Override
     protected void paintComponent(Graphics g) {
