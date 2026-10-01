@@ -11,10 +11,13 @@ import javax.swing.Timer;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Font;
+import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class PanelJuego extends JPanel implements ActionListener {
+    
+    private boolean estaPausado = false;
     
     private Nave naveJugador;
     private int yNave;
@@ -56,6 +59,19 @@ public class PanelJuego extends JPanel implements ActionListener {
         if (nuevaY >= 0 && nuevaY <= getHeight() -50) {
             yNave = nuevaY;
         }
+    }
+    
+    public void alternarPausa() {
+        estaPausado = !estaPausado;
+        
+        if (estaPausado) {
+            if (timerRedibujo != null) timerRedibujo.stop();
+            if (timerGenerador != null) timerGenerador.stop();
+        } else {
+            if (timerRedibujo != null) timerRedibujo.start();
+            if (timerGenerador != null) timerGenerador.start();
+        }
+        repaint();
     }
     
     public void disparar() {
@@ -187,6 +203,25 @@ public class PanelJuego extends JPanel implements ActionListener {
             }
         }
         
+        if (estaPausado) {
+            Graphics2D g2d = (Graphics2D) g;
+            
+            g2d.setColor(new Color(0, 0, 0, 150));
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+            
+            g2d.setColor(Color.YELLOW);
+            g2d.setFont(new Font("Arial", Font.BOLD, 36));
+            String msg = "JUEGO EN PAUSA";
+            int anchoTexto = g2d.getFontMetrics().stringWidth(msg);
+            g2d.drawString(msg, (getWidth() - anchoTexto) / 2, getHeight() / 2 - 20);
+            
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.PLAIN, 18));
+            String subMsg = "Presiona ´P´ o ´ESC´ para Reanudar";
+            int anchoSub = g2d.getFontMetrics().stringWidth(subMsg);
+            g2d.drawString(subMsg, (getWidth() - anchoSub) / 2, getHeight() / 2 + 20);
+        }
+        
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.BOLD, 16));
         g.drawString("Puntaje: " + puntaje, 20, 30);
@@ -194,5 +229,9 @@ public class PanelJuego extends JPanel implements ActionListener {
             g.setColor(Color.RED);
             g.drawString("¡BLOQUEADO Por Asteroide!", 20, 60);
         }
+    }
+    
+    public boolean isEstaPausado() {
+        return estaPausado;
     }
 }

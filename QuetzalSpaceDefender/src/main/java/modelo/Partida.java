@@ -12,6 +12,7 @@ public class Partida {
        this.puntajeObtenido = puntajeObtenido;
    }
    
+   
    public Piloto getPiloto() { return piloto; }
    public Dificultad getDificultad() { return dificultad; }
    public int getPuntajeObtenido() { return puntajeObtenido; }

@@ -4,6 +4,8 @@ package gui;
 import modelo.Dificultad;
 import modelo.Nave;
 import modelo.Piloto;
+import modelo.Partida;
+import persistencia.ControladorPersistencia;
         
 import javax.swing.*;
 import java.awt.*;
@@ -33,7 +35,15 @@ public class VentanaMenu extends JFrame {
         
         btnJugar.addActionListener(e -> iniciarJuego());
         btnCrearPiloto.addActionListener(e -> registrarPiloto());
-        btnTopPuntajes.addActionListener(e -> JOptionPane.showInternalMessageDialog(this, "SSección Top Puntajes", "Ranking", JOptionPane.INFORMATION_MESSAGE));
+        btnTopPuntajes.addActionListener(e -> {
+            Partida[] top = controlador.obtenerTopPuntajes(5);
+            StringBuilder sb = new StringBuilder("--- Top 5 puntajes ---\n\n");
+            for (int i = 0; i < top.length; i++) {
+                sb.append((i + 1)).append(". ").append(top[i].getPiloto().getNickname()).append(" - ").append(top[i].getPuntajeObtenido()).append(" Pts\n");
+            }
+            JOptionPane.showMessageDialog(this, sb.toString(), "Ranking", JOptionPane.INFORMATION_MESSAGE);
+        }); 
+                
         btnSalir.addActionListener(e -> System.exit(0));
     }
     
@@ -71,4 +81,6 @@ public class VentanaMenu extends JFrame {
         VentanaJuego juego = new VentanaJuego(naveActual);
         juego.setVisible(true);
     }
+    
+    private ControladorPersistencia controlador = new ControladorPersistencia(50, 100);
 }

@@ -1,6 +1,12 @@
 
 package persistencia;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import modelo.Partida;
 import modelo.Piloto;
 
@@ -12,12 +18,16 @@ public class ControladorPersistencia {
    private Partida[] partidas;
    private int contadorPartidas;
    
+   private static final String ARCHIVO_PUNTAJES = "puntajes.txt";
+   
    public ControladorPersistencia(int capacidadMaxPilotos, int capacidadMaxPartidas) {
        this.pilotos = new Piloto[capacidadMaxPilotos];
        this.contadorPilotos = 0;
        
        this.partidas = new Partida[capacidadMaxPartidas];
        this.contadorPartidas = 0;
+       
+       cargarPuntajesDesdeArchivo();
    }
    
    public boolean agregarPiloto(Piloto nuevoPiloto) {
@@ -47,11 +57,15 @@ public class ControladorPersistencia {
                contadorPartidas++;
                
                Piloto p = nuevaPartida.getPiloto();
+               if (p != null) {
                p.actualizarPuntajeMaximo(nuevaPartida.getPuntajeObtenido());
-               return true;
            }
-           return false;
+           
+           guardarPartidaEnArchivo(nuevaPartida);    
+           return true;
        }
+       return false;
+    }
        
        public Partida[] obtenerTopPuntajes(int limiteTop) {
            Partida[] topPartidas = new Partida[contadorPartidas];
@@ -76,6 +90,45 @@ public class ControladorPersistencia {
            }
            
            return resultado;
+       }
+       
+       private void guardarPartidaEnArchivo(Partida p) {
+           try (BufferedWriter bw = new BufferedWriter(new FileWriter(ARCHIVO_PUNTAJES, true))) {
+               String nick = (p.getPiloto() != null) ? p.getPiloto().getNickname() : "Anonimo";
+               bw.write(nick + "," + p.getPuntajeObtenido());
+               bw.newLine();
+           } catch (IOException e) {
+               System.err.println("Error al escribir puntaje en archivo: " + e.getMessage());
+           }
+       }
+       
+       private void cargarPuntajesDesdeArchivo() {
+           File f = new File(ARCHIVO_PUNTAJES);
+           if (!f.exists()) return;
+           
+           try (BufferedReader br = new BufferedReader(new FileReader(f))){
+               String linea;
+               while ((linea = br.readLine()) != null) {
+                   String[] datos = linea.split(",");
+                   if (datos.length >= 2) {
+                       String nick = datos[0];
+                       int pts = Integer.parseInt(datos[1].trim());
+                       
+                       Piloto piloto = buscarPiloto(nick);
+                       if (piloto == null) {
+                           piloto = new Piloto("101", nick);
+                           agregarPiloto(piloto);
+                       }
+                       
+                       Partida p = new Partida(piloto, null, pts);
+                       if (contadorPartidas < partidas.length) {
+                           partidas[contadorPartidas++] = p;
+                       }
+                   }
+               }
+           } catch (Exception e) {
+               System.err.println("Error al cargar puntajes del archivo: " + e.getMessage());
+           }
        }
        
        public Piloto[] getPilotos() { return pilotos; }
