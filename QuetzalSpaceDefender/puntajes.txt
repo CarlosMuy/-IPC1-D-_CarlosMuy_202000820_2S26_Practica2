@@ -1,0 +1,28 @@
+Carlos,20
+Carlos,20
+Carlos,0
+Piloto Novato,170
+Piloto Novato,0
+Piloto Novato,0
+carlos,0
+Piloto Novato,170
+Carlos,0
+Carlos,20
+Piloto Novato,980
+Estuardo,940
+Piloto Novato,210
+Estuardo,270
+Piloto Novato,40
+Piloto Novato,30
+Piloto Novato,160
+Piloto Novato,420
+Piloto Novato,40
+Carlos,390
+beci,320
+Piloto Novato,0
+beci,180
+Carlos,10
+Piloto Novato,1080
+Piloto Novato,0
+Piloto Novato,0
+Piloto Novato,1330

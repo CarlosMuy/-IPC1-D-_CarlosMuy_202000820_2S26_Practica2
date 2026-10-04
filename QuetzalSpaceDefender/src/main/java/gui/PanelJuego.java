@@ -5,6 +5,8 @@ import hilos.HiloObjetoEspecial;
 import hilos.HiloProyectil;
 import hilos.TipoObjeto;
 import modelo.Nave;
+import modelo.Partida;
+import persistencia.ControladorPersistencia;
 
 import javax.swing.JPanel;
 import javax.swing.Timer;
@@ -14,31 +16,41 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import javax.swing.SwingUtilities;
+import javax.swing.JOptionPane;
+import java.awt.Window;
+import java.awt.Rectangle;
 
 public class PanelJuego extends JPanel implements ActionListener {
     
     private boolean estaPausado = false;
     
-    private Nave naveJugador;
+    private final Nave naveJugador;
     private int yNave;
     private int xNave = 50;
     
     private boolean bloqueado = false;
     private int puntaje = 0;
     
-    private HiloProyectil[] proyectiles;
+    private final HiloProyectil[] proyectiles;
     private int contadorProyectiles;
     
-    private HiloObjetoEspecial[] objetosEspaciales;
+    private final HiloObjetoEspecial[] objetosEspaciales;
     private int contadorObjetos;
     
-    private Timer timerRedibujo;
-    private Timer timerGenerador;
+    private final Timer timerRedibujo;
+    private final Timer timerGenerador;
     
     public PanelJuego(Nave  nave) {
         this.naveJugador = nave;
         this.yNave = 250;
         this.setBackground(Color.BLACK);
+        
+        this.setPreferredSize(new java.awt.Dimension(800, 600));
+        this.setFocusable(true);
+        this.requestFocusInWindow();
         
         this.proyectiles = new HiloProyectil[100];
         this.contadorProyectiles = 0;
@@ -46,11 +58,67 @@ public class PanelJuego extends JPanel implements ActionListener {
         this.objetosEspaciales = new HiloObjetoEspecial[100];
         this.contadorObjetos = 0;
         
-        this.timerRedibujo = new Timer(16, this);
+        this.timerRedibujo = new Timer(16, e -> {
+            if (!estaPausado) {
+                verificarColisiones();
+            }
+            repaint();
+        });
         this.timerRedibujo.start();
         
         this.timerGenerador = new Timer(1500, e -> generarObjetoAleatorio());
         this.timerGenerador.start();
+        
+        this.addKeyListener(new KeyAdapter() {
+        @Override
+        public void keyPressed(KeyEvent e) {
+            int clave = e.getKeyCode();
+   
+               if (clave == KeyEvent.VK_P) {
+                   alternarPausa();
+                   return;
+               }
+               if (clave == KeyEvent.VK_ESCAPE) {
+                   if (!estaPausado) {
+                       alternarPausa();
+                   }
+                Window parentWindow = SwingUtilities.getWindowAncestor(PanelJuego.this);
+                int opcion = JOptionPane.showConfirmDialog(parentWindow, "¿Deseas salir de la partida actual?\nSe guardará tu puntaje actual (" + puntaje + " pts)." , "Salir del juego", JOptionPane.YES_NO_OPTION);
+                 
+                if (opcion == JOptionPane.YES_OPTION) {
+                    finalizarPartida("Partida guardada exitosamente.");
+                } else {
+                    if (estaPausado) {
+                        alternarPausa();
+                    }
+                    requestFocusInWindow();
+                }
+                return;
+            }
+               if (estaPausado) {
+                   return;
+               }
+            
+            int anchoPanel = getWidth();
+            int altoPanel = getHeight();
+
+            int limiteDerecho = Math.max(0, anchoPanel -50);
+            int limiteInferior = Math.max(0, altoPanel - 40);
+
+            switch (clave) {
+                case KeyEvent.VK_UP, KeyEvent.VK_W -> yNave = Math.max(0, yNave -15);
+                case KeyEvent.VK_DOWN, KeyEvent.VK_S -> yNave = Math.min(limiteInferior, yNave + 15);
+                case KeyEvent.VK_RIGHT, KeyEvent.VK_D -> xNave = Math.max(0, xNave + 15);
+                case KeyEvent.VK_LEFT, KeyEvent.VK_A -> xNave = Math.min(limiteDerecho, xNave -15);
+                case KeyEvent.VK_SPACE -> disparar();
+                default -> {}
+            }
+            }
+    });
+    }
+    
+    public int getPuntaje() {
+        return this.puntaje;
     }
     
     public void moverNave(int deltaY) {
@@ -65,33 +133,21 @@ public class PanelJuego extends JPanel implements ActionListener {
         estaPausado = !estaPausado;
         
         if (estaPausado) {
-            if (timerRedibujo != null) timerRedibujo.stop();
             if (timerGenerador != null) timerGenerador.stop();
         } else {
-            if (timerRedibujo != null) timerRedibujo.start();
             if (timerGenerador != null) timerGenerador.start();
         }
         repaint();
     }
     
     public void disparar() {
-        if (bloqueado) return;
-        
-         int cooldown = 1000;
-         if (naveJugador != null && naveJugador.getDificultad() != null) {
-             cooldown = naveJugador.getDificultad().getSleepDisparoMs();
-         }
-         
-        long tiempoActual = System.currentTimeMillis();
-        
-        if (tiempoActual - ultimoDisparoMs >= cooldown) {
-           if (contadorProyectiles < proyectiles.length) {
-               HiloProyectil p = new HiloProyectil(xNave + 40, yNave + 15);
-               proyectiles[contadorProyectiles++] = p;
-               p.start();
-               ultimoDisparoMs = tiempoActual;
+        if (contadorProyectiles < proyectiles.length) {
+            HiloProyectil nuevoProyectil = new HiloProyectil(xNave + 40, yNave + 15);
+            proyectiles[contadorProyectiles] = nuevoProyectil;
+            contadorProyectiles++;
+            
+            nuevoProyectil.start();
         }
-    }
 }
 
     private void generarObjetoAleatorio() {
@@ -122,41 +178,81 @@ public class PanelJuego extends JPanel implements ActionListener {
         for (int i = 0; i < contadorProyectiles; i++) {
             HiloProyectil p = proyectiles[i];
             if (p != null && p.isActivo()) {
+                Rectangle rectProyectil = new Rectangle(p.getX(), p.getY(), 10, 4);
+                
                 for (int j = 0; j < contadorObjetos; j++) {
                     HiloObjetoEspecial obj = objetosEspaciales[j];
                     if (obj != null && obj.isActivo()) {
-                        if (Math.abs(getX() - obj.getX()) < 40 && Math.abs(p.getY() - obj.getY()) < 35) {
+                        
+                        int ancho = 30, alto = 30;
+                        if (obj.getTipo() == TipoObjeto.ASTEROIDE) {
+                            ancho = 35; alto = 35;
+                        } else if (obj.getTipo() == TipoObjeto.QUAFFLE) {
+                            ancho = 20; alto = 20;
+                        } else if (obj.getTipo() == TipoObjeto.SNITCH_ESPECIAL) {
+                            ancho = 15; alto = 15;
+                        }
+                        
+                        Rectangle rectObjeto = new Rectangle(obj.getX(), obj.getY(), ancho, alto);
+                        if (rectProyectil.intersects(rectObjeto)) {
                             p.detener();
                             obj.detener();
+                            proyectiles[i] = null;
+                            objetosEspaciales[j] = null;
                             
                             if (obj.getTipo() == TipoObjeto.ENEMIGO) {
                                 puntaje += 20;
                             } else if (obj.getTipo() == TipoObjeto.SNITCH_ESPECIAL) {
                                 puntaje += 150;
-                                destruirEnemigos();
+                                destruirTodosLosEnemigosPantalla();
+                            } 
+                            break; 
                             }
                         }
                     }
                 }
             }
-        }
-        
-        for (int j = 0; j < contadorObjetos; j++) {
-            HiloObjetoEspecial obj = objetosEspaciales[j];
-            if (obj != null && obj.isActivo()) {
-                if (Math.abs(xNave - obj.getX()) < 40 && Math.abs(yNave - obj.getY()) < 35) {
-                    obj.detener();
-                    if (obj.getTipo() == TipoObjeto.ASTEROIDE) {
-                        bloquearNave();
-                    } else if (obj.getTipo() == TipoObjeto.QUAFFLE) {
-                        puntaje += 10;
-                    } else if(obj.getTipo() == TipoObjeto.SNITCH_ESPECIAL) {
-                        puntaje += 150;
-                        destruirEnemigos();
+            Rectangle rectNave = new Rectangle(xNave, yNave, 40, 30);
+            for (int j = 0; j < contadorObjetos; j++) {
+                HiloObjetoEspecial obj = objetosEspaciales[j];
+                if (obj != null && obj.isActivo()) {
+                    
+                    int ancho = 30;
+                    int alto = 30;
+                    if (obj.getTipo() == TipoObjeto.ASTEROIDE) { 
+                        ancho = 35; alto = 35; }
+                    else if (obj.getTipo() == TipoObjeto.QUAFFLE) {
+                        ancho = 20; alto = 20; }
+                    else if (obj.getTipo() == TipoObjeto.SNITCH_ESPECIAL) {
+                        ancho = 15; alto = 15; }
+                    
+                    Rectangle rectObjeto = new Rectangle(obj.getX(), obj.getY(), ancho, alto);
+                    
+                    if (rectNave.intersects(rectObjeto)) {
+                        obj.detener();
+                        objetosEspaciales[j] = null;
+                        
+                        if (obj.getTipo() == TipoObjeto.ENEMIGO) {
+                            finalizarPartida("¡Game Over! Has chocado con un enemigo.");
+                            return;
+                        } else if (obj.getTipo() == TipoObjeto.SNITCH_ESPECIAL) {
+                            puntaje += 150;
+                            destruirTodosLosEnemigosPantalla();
+                        } else if (obj.getTipo() == TipoObjeto.ASTEROIDE) {
+                            bloquearNave();
+                        } else if (obj.getTipo() == TipoObjeto.QUAFFLE) {
+                            puntaje += 10;
+                        }
+                    }
+                    
+                    if (obj.getTipo() == TipoObjeto.ENEMIGO && obj.getX() <= 0) {
+                        obj.detener();
+                        objetosEspaciales[j] = null;
+                        finalizarPartida("¡Game Over! Un enemigo ha logrado escapar.");
+                        return;
                     }
                 }
-            }
-        }
+            }                    
     }
     
     private void bloquearNave() {
@@ -167,15 +263,39 @@ public class PanelJuego extends JPanel implements ActionListener {
         }).start();
     }
     
-    private void destruirEnemigos() {
-        for (int i = 0; i < contadorObjetos; i++) {
-            if (objetosEspaciales[i] != null && objetosEspaciales[i].getTipo() == TipoObjeto.ENEMIGO) {
-                objetosEspaciales[i].detener();
+    public void finalizarPartida(String mensaje) {
+        if (timerRedibujo != null) timerRedibujo.stop();
+        if (timerGenerador != null) timerGenerador.stop();
+        
+        guardarPuntajeFinal();
+        
+        javax.swing.JOptionPane.showMessageDialog(this, mensaje + "\nPuntaje total: " + puntaje, "Fin del Juego", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        
+        new gui.VentanaMenu().setVisible(true);
+        
+        java.awt.Window ventana = javax.swing.SwingUtilities.getWindowAncestor(this);
+        if (ventana != null) {
+            ventana.dispose();
+        }
+    }
+    private void destruirTodosLosEnemigosPantalla() {
+        for (int j = 0; j < contadorObjetos; j++) {
+            HiloObjetoEspecial obj = objetosEspaciales[j];
+            if (obj != null && obj.isActivo() && obj.getTipo() == TipoObjeto.ENEMIGO) {
+                obj.detener();
+                puntaje += 20;
             }
         }
     }
     
-    private long ultimoDisparoMs = 0;
+    
+    public void guardarPuntajeFinal() {
+        if (naveJugador != null) {
+            Partida partida = new Partida(naveJugador.getPiloto(), naveJugador.getDificultad(), puntaje);
+            ControladorPersistencia pers = new ControladorPersistencia(100, 100);
+            pers.registrarPartida(partida);
+        }
+    }
     
     @Override
     protected void paintComponent(Graphics g) {
@@ -217,7 +337,7 @@ public class PanelJuego extends JPanel implements ActionListener {
             
             g2d.setColor(Color.WHITE);
             g2d.setFont(new Font("Arial", Font.PLAIN, 18));
-            String subMsg = "Presiona ´P´ o ´ESC´ para Reanudar";
+            String subMsg = "Presiona ´P´ para Reanudar";
             int anchoSub = g2d.getFontMetrics().stringWidth(subMsg);
             g2d.drawString(subMsg, (getWidth() - anchoSub) / 2, getHeight() / 2 + 20);
         }

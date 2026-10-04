@@ -9,8 +9,10 @@ import persistencia.ControladorPersistencia;
         
 import javax.swing.*;
 import java.awt.*;
-
 public class VentanaMenu extends JFrame {
+    
+    private persistencia.ControladorPersistencia controlador = new persistencia.ControladorPersistencia(100, 100);
+    
     
     public VentanaMenu() {
         setTitle("Quetzal Space Defender - Menú Principal");
@@ -37,6 +39,11 @@ public class VentanaMenu extends JFrame {
         btnCrearPiloto.addActionListener(e -> registrarPiloto());
         btnTopPuntajes.addActionListener(e -> {
             Partida[] top = controlador.obtenerTopPuntajes(5);
+            
+            if (top == null || top.length == 0) {
+                JOptionPane.showMessageDialog(this, "Aun no hay puntajes registrado.", "Ranking", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
             StringBuilder sb = new StringBuilder("--- Top 5 puntajes ---\n\n");
             for (int i = 0; i < top.length; i++) {
                 sb.append((i + 1)).append(". ").append(top[i].getPiloto().getNickname()).append(" - ").append(top[i].getPuntajeObtenido()).append(" Pts\n");
@@ -80,7 +87,9 @@ public class VentanaMenu extends JFrame {
         
         VentanaJuego juego = new VentanaJuego(naveActual);
         juego.setVisible(true);
+        
+        this.dispose();
     }
     
-    private ControladorPersistencia controlador = new ControladorPersistencia(50, 100);
+    
 }
